@@ -6,21 +6,20 @@ import numpy as np
 from PIL import Image
 import io
 import numpy as np
-import cv2
 p_model=keras.models.load_model('./MODELS/PN_MODEL')
 t_model=keras.models.load_model('./MODELS/TB_MODEL')
 """ r=requests.get("https://demo.storj-ipfs.com/ipfs/QmdBEhjTNExiTvnLgAD5EHz6Ygf1rFnnUpXy9sKbYe7z7D",stream=True, verify=False, 
                 headers={"Accept-Encoding": "identity"}) """
+
 def gray_to_rgb(file):
-    gray_image = np.frombuffer(file, np.uint8)
-    gray_image = cv2.imdecode(gray_image, cv2.IMREAD_GRAYSCALE)
-    rgb_image = np.zeros((gray_image.shape[0], gray_image.shape[1], 3), dtype=np.uint8)
-    rgb_image[:, :, 0] = gray_image
-    rgb_image[:, :, 1] = gray_image
-    rgb_image[:, :, 2] = gray_image
-    _, encoded_image = cv2.imencode('.png', rgb_image)
-    byte_stream = io.BytesIO(encoded_image)
-    return Image.open(byte_stream)
+    gray_image = Image.open(io.BytesIO(file)).convert("L")
+    rgb_image = Image.new("RGB", gray_image.size)
+    for x in range(gray_image.width):
+        for y in range(gray_image.height):
+            gray_value = gray_image.getpixel((x, y))
+            rgb_image.putpixel((x, y), (gray_value, gray_value, gray_value))
+    
+    return rgb_image
 
 def pneumonia_detection(file):
     img = gray_to_rgb(file)
