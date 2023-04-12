@@ -10,6 +10,7 @@ from helpers.auth_helper import login_required
 from helpers.views_helper import *
 import requests,os,json,mimetypes
 from backend import settings
+from datetime import date
 from django.http import HttpResponse
 # Create your views here.
 
@@ -88,8 +89,12 @@ class Uploading(APIView):
             myfile = request.FILES['document']
             file=myfile.read()
             data={}
-            data['Pneumonia']=pneumonia_detection(file)
-            data['Tuberculosis']=tuberculosis_detection(file)
+            data['Patient Name']=patient_name
+            data['Patient Age']=patient_age
+            data['Patient Gender']=patient_gender
+            data['Date']=date.today()
+            data['Pneumonia Result']=pneumonia_detection(file)
+            data['Tuberculosis Result']=tuberculosis_detection(file)
             res=requests.post(url_constants.UPLOAD_URL,files={'upload_file':file}).text
             xray_hash=json.loads(res)['Hash']
             models.PatientDetails.objects.create(
@@ -97,31 +102,13 @@ class Uploading(APIView):
                 age=patient_age,
                 gender=patient_gender,
                 xray_hash=xray_hash,
-                pneumonia_result=data['Pneumonia'],
-                tuberculosis_result=data['Tuberculosis']
+                pneumonia_result=data['Pneumonia Result'],
+                tuberculosis_result=data['Tuberculosis Result']
                 )
-            return Response(api_response(ResponseType.SUCCESS, API_Messages.FILE_UPLOADED,data))
-        except Exception as exception:
-            return Response(api_response(ResponseType.FAILED, str(exception)), status=status.HTTP_400_BAD_REQUEST)
-
-
-""" class Downloading(APIView):
-    @method_decorator(login_required())
-    def post(self,request):
-        try:
-            private_key=request.data.get('private_key')
-            tx_hash=request.data.get('tx_hash')
-            xray_hash=get_xray_hash(tx_hash)
-            file_name=models.FileDetails.objects.get(xray_data=sha1(xray_hash.encode()).hexdigest()).name
-            r=requests.get(url_constants.DOWNLOAD_URL+xray_hash,stream=True, verify=False, 
-                headers={"Accept-Encoding": "identity"})
-            
-            content_type, encoding = mimetypes.guess_type(file_name)
-            file=decrypt(private_key, r.content)
-            response = HttpResponse(file, content_type=content_type)
-            response['Content-Disposition']=f'attachment; filename={file_name}'
-            response['file_name']=file_name
+            file=generate_pdf(data)
+            response = HttpResponse(file, content_type="application/pdf")
+            response['Content-Disposition']=f'attachment; filename={patient_name}.pdf'
+            response['file_name']=patient_name+'.pdf'
             return response
         except Exception as exception:
             return Response(api_response(ResponseType.FAILED, str(exception)), status=status.HTTP_400_BAD_REQUEST)
- """
